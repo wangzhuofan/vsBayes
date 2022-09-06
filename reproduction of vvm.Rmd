@@ -1,0 +1,64 @@
+---
+title: "reproduction of vvm"
+author: "zhuofan"
+date: '2022-09-05'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Package required
+```{r}
+require(LaplacesDemon)
+```
+## Data generation
+```{r}
+set.seed(1)
+n = 100
+p = 1000
+pm = matrix(rep(1:p,p),p,p)
+pm = pm-t(pm)
+pm = 0.6^abs(pm)
+x = mvtnorm::rmvnorm(n,rep(0,p),pm)
+beta0 = c(c(3,2,1),rep(0,p-3))
+eps = rnorm(100,0,sqrt(3))
+y = x%*%beta0+eps
+```
+## Function prepared
+```{r}
+
+```
+### Initialization
+```{r}
+set.seed(2)
+mu = rep(1,p)
+sigmamu2 = rep(1,p)
+theta = runif(1)
+sigma2 = 1
+phi = rep(1,p)
+a0=1
+b0=1
+nu = 1
+lambda=1
+```
+
+```{r}
+iters = 1000
+for (it in 1:iters) {
+  
+### VE-step
+
+mu = solve(diag(phi)%*%t(x)%*%x%*%diag(phi)+n*(diag(phi)-diag(phi)%*%diag(phi))+diag(phi)/v1,diag(phi)%*%t(x)%*%y)
+sigmamu2 = sigma2/(n+1/v1)
+phi = as.vector(invlogit(logit(theta)+0.5*(log(sigmamu2/(v1*sigma2))+mu^2/sigmamu2)))
+
+
+### VM-step
+
+theta = (sum(phi)+a0-1)/(p+a0+b0-2)
+sigma2 = norm(y-t(t(x)*(phi))%*%(mu),"2")^2+sum((apply(x, 2, crossprod)*(1-phi)+1/v1)*(phi)*mu^2+(apply(x, 2, crossprod)+1/v1)*(phi)*sigmamu2+phi*(mu^2+sigmamu2)/v1)+nu*lambda
+sigma2 = sigma2/(n+prod((phi))+nu+2)
+}
+```
+
