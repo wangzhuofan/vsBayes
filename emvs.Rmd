@@ -12,21 +12,24 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 set.seed(1)
 n = 100
-p = 1000
-pm = matrix(rep(1:p,p),p,p)
-pm = pm-t(pm)
-pm = 0.6^abs(pm)
-x = mvtnorm::rmvnorm(n,rep(0,p),pm)
-beta0 = c(c(3,2,1),rep(0,p-3))
-eps = rnorm(100,0,sqrt(3))
-y = x%*%beta0+eps
+p = 4
+x = matrix(NA,p,n)
+x[1,] = rnorm(n)
+x[2,] = rnorm(n)
+x[3,] = 0.8*x[1,]+0.5*x[2,]+rnorm(100,0,0.1)
+x[4,] = 0.9*x[1,]+0.9*x[3,]-0.5*x[2,]+rnorm(100,0,0.1)
+beta0 = matrix(c(1,0,0.8,0.9,0,1,0.5,-0.5,0,0,0,0.9,0,0,0,0),p,p)
+plot(x[3,],x[1,])
+
 ```
 ## Initialization
 ```{r}
 set.seed(5)
-v0 = 0.5
-v1 = 1000
-beta = rep(1,p)
+v0 = 0.01
+v1 = 1
+beta = matrix(0.5,p,p)
+diag(beta) = 0
+#beta = rep(1,p)
 sigma2 = 1
 theta = runif(1)
 nu = 1
@@ -36,21 +39,26 @@ b = 1
 ```
 
 ```{r}
-iters = 100
+iters = 1000
 for (it in 1:iters) {
 ## E-step
 
 ap = theta*dnorm(beta,0,sqrt(sigma2*v1))
 bp = (1-theta)*dnorm(beta,0,sqrt(sigma2*v0))
 prob = ap/(ap+bp)
-d = as.vector((1-prob)/v0+prob/v1)
+d = ((1-prob)/v0+prob/v1)
 
 ## M-step
-beta = solve(t(x)%*%x+diag(d),t(x)%*%y)
+for (i in 1:p) {
+  beta[i,-i] = solve(x%*%t(x)+diag(as.vector(d[i,])),x%*%(x[i,]))
+}
+#beta = solve(t(x)%*%x+diag(d),t(x)%*%y)
 #beta = (diag(1/d)-diag(1/d)%*%t(x)%*%solve(matrix(1,n,n)+x%*%diag(1/d)%*%t(x),x%*%diag(1/d)))%*%t(x)%*%y
-sigma2= norm(y-x%*%beta,"2")^2+sum(d*beta^2)+nu*lambda
-sigma2 = sigma2/(n+p+nu)
-theta = (sum(prob)+a-1)/(a+b+p-2)
+#sigma2= norm(y-x%*%beta,"2")^2+sum(d*beta^2)+nu*lambda
+sigma2 = norm(x-beta%*%x,"F")^2+norm(beta^2*d,"F")^2+nu*lambda
+sigma2 = sigma2/(p^2+n*p+nu)
+#sigma2 = sigma2/(n+p+nu)
+theta = (sum(prob)+a-1)/(a+b+p^2-2)
 }
 ```
 ```{r}
